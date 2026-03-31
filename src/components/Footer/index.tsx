@@ -61,9 +61,6 @@ export function Footer() {
 
         <div className={styles.bottom}>
           <p>&copy; {new Date().getFullYear()} StampCommit. All rights reserved.</p>
-          <p className={styles.tech}>
-            <span className={styles.dot} /> Built with Next.js &amp; React
-          </p>
         </div>
       </div>
     </footer>
