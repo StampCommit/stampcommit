@@ -1,0 +1,111 @@
+.card {
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.featured {
+  border-color: var(--color-glass-border-hover) !important;
+}
+
+.featuredGlow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 20%, var(--color-accent-subtle), transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.iconWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-subtle);
+  border: 1px solid var(--color-glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.pulsingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-amber);
+  display: inline-block;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-top: var(--space-xs);
+}
+
+.description {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+  flex: 1;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-subtle);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.cardFooter {
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+  margin-top: auto;
+}
+
+.cardLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  transition: gap var(--transition-base);
+}
+
+.cardLink:hover {
+  gap: var(--space-md);
+}
+
+.comingSoonText {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+}
