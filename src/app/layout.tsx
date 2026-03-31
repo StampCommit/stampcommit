@@ -38,6 +38,22 @@ export const metadata: Metadata = {
     description:
       "Innovative software solutions for BLE connectivity, IoT, and cross-platform mobile development.",
     type: "website",
+    siteName: "StampCommit",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "StampCommit — We Build. Deliver. Commit.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "StampCommit — Build. Deliver. Commit.",
+    description:
+      "Innovative software solutions for BLE connectivity, IoT, and cross-platform mobile development.",
+    images: ["/og-image.png"],
   },
 };
 
