@@ -12,6 +12,8 @@ export function FlappyCommit() {
   const imgRef = useRef<HTMLImageElement | null>(null);
 
   const logic = useRef({
+    lives: 5,
+    invincibility: 0,
     bird: { x: 50, y: 150, width: 34, height: 34, velocity: 0, gravity: 0.4, jump: -6.5 },
     pipes: [] as { x: number; topH: number; bottomY: number; passed: boolean; destroyed?: boolean }[],
     powerups: [] as { x: number; y: number; text: string; effect: "sudo" | "shrink" | "slow" | "typesafe" | "leak" | "cloud" | "shoot"; color: string; collected: boolean }[],
@@ -61,6 +63,8 @@ export function FlappyCommit() {
     const l = logic.current;
     l.bird.y = l.height / 2;
     l.bird.velocity = 0;
+    l.lives = 5;
+    l.invincibility = 0;
     
     // Spawn first pipe near the bird to skip waiting
     const minH = 50;
@@ -135,6 +139,20 @@ export function FlappyCommit() {
     let animationId: number;
 
     const gameLoop = () => {
+      const takeDamage = () => {
+        if (l.invincibility > 0) return false;
+        l.lives--;
+        if (l.lives <= 0) {
+          setGameState("gameover");
+          setScoreDisplay(l.score);
+          return true; // Game Over
+        }
+        l.invincibility = 60; // 1 second i-frames
+        return false;
+      };
+
+      if (l.invincibility > 0) l.invincibility--;
+
       // Autopilot (Attract Mode)
       if (gameState === "idle") {
         const nextPipe = l.pipes.find(p => p.x + 50 > l.bird.x);
@@ -340,9 +358,7 @@ export function FlappyCommit() {
           } else if (gameState === "idle") {
             // In attract mode, just ghost through if physics fail slightly
           } else {
-            setGameState("gameover");
-            setScoreDisplay(l.score);
-            return; // Stop rendering
+            if (takeDamage()) return;
           }
         }
 
@@ -382,9 +398,8 @@ export function FlappyCommit() {
                p.type = "stamp"; // deflect back!
                p.vx = 8;
              } else if (gameState !== "idle") {
-               setGameState("gameover");
-               setScoreDisplay(l.score);
-               return;
+               if (takeDamage()) return;
+               p.x = -100; // destroy the bug if it hits you
              }
           }
         } else if (p.type === "stamp" && l.boss.active) {
@@ -442,9 +457,9 @@ export function FlappyCommit() {
           l.bird.y = Math.max(0, Math.min(l.height - l.bird.height, l.bird.y));
           l.bird.velocity = l.bird.jump * (l.bird.y < 50 ? -1 : 1); // Bounce
         } else {
-          setGameState("gameover");
-          setScoreDisplay(l.score);
-          return;
+          l.bird.y = Math.max(0, Math.min(l.height - l.bird.height, l.bird.y));
+          l.bird.velocity = l.bird.jump * (l.bird.y < 50 ? -1 : 1);
+          if (takeDamage()) return;
         }
       }
 
@@ -498,6 +513,10 @@ export function FlappyCommit() {
 
       ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (l.bird.velocity * 0.1))));
       
+      if (l.invincibility > 0 && Math.floor(l.frames / 4) % 2 === 0) {
+        ctx.globalAlpha = 0.4;
+      }
+      
       if (l.imgReady && imgRef.current) {
         ctx.beginPath();
         ctx.arc(0, 0, radius, 0, Math.PI * 2);
@@ -506,6 +525,7 @@ export function FlappyCommit() {
       } else {
         drawGlowingOrb(ctx, radius);
       }
+      ctx.globalAlpha = 1.0;
       ctx.restore();
 
       // Draw Score and Status instantly on canvas header
@@ -514,6 +534,11 @@ export function FlappyCommit() {
         ctx.font = "bold 24px monospace";
         ctx.textAlign = "center";
         ctx.fillText(l.score.toString(), l.width / 2, 40);
+
+        ctx.textAlign = "left";
+        ctx.font = "bold 20px monospace";
+        ctx.fillStyle = l.lives <= 1 ? "rgba(255, 59, 48, 1)" : "rgba(16, 185, 129, 1)";
+        ctx.fillText("♥️".repeat(l.lives), 20, 40);
 
         if (l.boss.active) {
           const hpW = 200;
