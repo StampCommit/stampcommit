@@ -1,11 +1,16 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { Icon } from "@/components/Icons";
+import { FlappyCommit } from "@/components/FlappyCommit";
 import styles from "./HeroSection.module.css";
 
 export function HeroSection() {
+  const [showGameOnMobile, setShowGameOnMobile] = useState(false);
+  
   return (
     <section className={styles.hero}>
       <div className={`${styles.content} container`}>
@@ -67,43 +72,33 @@ export function HeroSection() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <div className={styles.terminalCard}>
-            <div className={styles.terminalHeader}>
-              <div className={styles.dots}>
-                <span className={styles.dotRed} />
-                <span className={styles.dotYellow} />
-                <span className={styles.dotGreen} />
-              </div>
-              <span className={styles.terminalTitle}>stampcommit</span>
-            </div>
-            <div className={styles.terminalBody}>
-              <div className={styles.codeLine}>
-                <span className={styles.prompt}>$</span>
-                <span className={styles.command}>stampcommit init</span>
-                <span className={styles.cursor}>▋</span>
-              </div>
-              <div className={styles.codeLine}>
-                <span className={styles.output}>
-                  ✓ Project initialized
-                </span>
-              </div>
-              <div className={styles.codeLine}>
-                <span className={styles.output}>
-                  ✓ BLE module configured
-                </span>
-              </div>
-              <div className={styles.codeLine}>
-                <span className={styles.output}>
-                  ✓ Building firmware...
-                </span>
-              </div>
-              <div className={styles.codeLine}>
-                <span className={styles.success}>
-                  ◆ Ready to deploy
-                </span>
-              </div>
-            </div>
+          {/* Desktop view always shows the game wrapper. On Mobile, it's conditionally rendered. */}
+          <div className={`${styles.gameContainer} ${showGameOnMobile ? styles.mobileOpen : ''}`}>
+            <FlappyCommit />
+            
+            {/* Close button for mobile when open */}
+            {showGameOnMobile && (
+              <button 
+                className={styles.closeMobileGame} 
+                onClick={() => setShowGameOnMobile(false)}
+                aria-label="Close game"
+              >
+                ×
+              </button>
+            )}
           </div>
+
+          {/* Mobile toggle button when game is hidden */}
+          {!showGameOnMobile && (
+            <button 
+              className={styles.mobileGameToggle}
+              onClick={() => setShowGameOnMobile(true)}
+            >
+              <Icon name="zap" size={24} />
+              <span>Play Flappy Commit</span>
+            </button>
+          )}
+
         </motion.div>
       </div>
 

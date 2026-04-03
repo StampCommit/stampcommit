@@ -81,106 +81,27 @@
   margin-top: var(--space-sm);
 }
 
-/* Terminal Card — Liquid Glass style */
+/* Flappy Commit Container */
 .visual {
   display: flex;
   justify-content: center;
-}
-
-.terminalCard {
+  align-items: center;
   width: 100%;
-  max-width: 420px;
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  background: var(--color-liquid-glass);
-  border: 1px solid var(--color-glass-border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  box-shadow: var(--glass-shadow);
+}
+
+.gameContainer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
   position: relative;
 }
 
-/* Specular highlight on terminal */
-.terminalCard::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--glass-specular);
-  pointer-events: none;
-  z-index: 1;
+.mobileGameToggle {
+  display: none; /* hidden on desktop */
 }
 
-.terminalHeader {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: 0.75rem var(--space-md);
-  border-bottom: 1px solid var(--color-glass-border);
-}
-
-.dots {
-  display: flex;
-  gap: 6px;
-}
-
-.dotRed, .dotYellow, .dotGreen {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.dotRed { background: #ff5f56; }
-.dotYellow { background: #ffbd2e; }
-.dotGreen { background: #27c93f; }
-
-.terminalTitle {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-  margin-left: var(--space-sm);
-}
-
-.terminalBody {
-  position: relative;
-  z-index: 2;
-  padding: var(--space-lg);
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.codeLine {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-}
-
-.prompt {
-  color: var(--color-accent);
-  font-weight: 600;
-}
-
-.command {
-  color: var(--color-text-primary);
-}
-
-.cursor {
-  color: var(--color-accent);
-  animation: pulse-glow 1s ease-in-out infinite;
-}
-
-.output {
-  color: var(--color-text-secondary);
-}
-
-.success {
-  color: var(--color-green);
-  font-weight: 500;
+.closeMobileGame {
+  display: none;
 }
 
 /* Decorative scan line */
@@ -220,7 +141,63 @@
 
   .visual {
     order: -1;
+    margin-bottom: var(--space-lg);
   }
+
+  /* Hide raw game container on mobile unless open */
+  .gameContainer {
+    display: none;
+  }
+
+  .gameContainer.mobileOpen {
+    display: flex;
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .closeMobileGame {
+    display: flex;
+    position: absolute;
+    top: -15px;
+    right: -10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--color-red, #ff5f56);
+    color: white;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    line-height: 1;
+    z-index: 50;
+    box-shadow: var(--shadow-glow);
+    cursor: pointer;
+  }
+
+  .mobileGameToggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    background: var(--color-liquid-glass);
+    border: 1px solid var(--color-glass-border);
+    padding: var(--space-sm) var(--space-xl);
+    border-radius: var(--radius-full);
+    backdrop-filter: blur(10px);
+    color: var(--color-accent);
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--shadow-card);
+    transition: all 0.2s ease;
+  }
+
+  .mobileGameToggle:hover {
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 480px) {
