@@ -16,8 +16,8 @@ export function FlappyCommit() {
     invincibility: 0,
     bird: { x: 50, y: 150, width: 34, height: 34, velocity: 0, gravity: 0.4, jump: -6.5 },
     pipes: [] as { x: number; topH: number; bottomY: number; passed: boolean; destroyed?: boolean }[],
-    powerups: [] as { x: number; y: number; text: string; effect: "sudo" | "shrink" | "slow" | "typesafe" | "leak" | "cloud" | "shoot"; color: string; collected: boolean }[],
-    projectiles: [] as { x: number; y: number; vx: number; vy: number; type: "bug" | "stamp" }[],
+    powerups: [] as { x: number; y: number; text: string; effect: "sudo" | "shrink" | "slow" | "typesafe" | "leak" | "cloud" | "shoot" | "heal" | "refactor"; color: string; collected: boolean }[],
+    projectiles: [] as { x: number; y: number; vx: number; vy: number; type: "bug" | "stamp" | "crash" }[],
     boss: { active: false, hp: 0, maxHp: 10, x: 500, y: 150, attackTimer: 0 },
     bossesDefeated: 0,
     activeEffect: "none" as "none" | "sudo" | "shrink" | "slow" | "typesafe" | "leak" | "cloud",
@@ -222,15 +222,17 @@ export function FlappyCommit() {
           destroyed: false
         });
 
-        // 40% chance to spawn a tech stack item
-        if (Math.random() < 0.4) {
+        // 45% chance to spawn a tech stack item
+        if (Math.random() < 0.45) {
           const techs = [
             { text: "K8S", effect: "sudo", color: "rgba(50, 108, 229, 0.9)" }, // Sudo: smash
             { text: "RS", effect: "shrink", color: "rgba(222, 104, 33, 0.9)" },  // Shrink: small hitbox
             { text: "GO", effect: "slow", color: "rgba(0, 173, 216, 0.9)" },    // Slow: slow speed
             { text: "TS", effect: "typesafe", color: "rgba(49, 120, 198, 0.9)" }, // TypeSafe: magnet
             { text: "C", effect: "leak", color: "rgba(168, 185, 204, 0.9)" }, // Leak: fast speed trap
-            { text: "AWS", effect: "cloud", color: "rgba(255, 153, 0, 0.9)" } // Cloud: floor bounce
+            { text: "AWS", effect: "cloud", color: "rgba(255, 153, 0, 0.9)" }, // Cloud: bounce
+            { text: "DB", effect: "heal", color: "rgba(46, 204, 113, 0.9)" }, // DB: restores life
+            { text: "AI", effect: "refactor", color: "rgba(155, 89, 182, 0.9)" } // AI: smart bomb
           ] as const;
           const tech = techs[Math.floor(Math.random() * techs.length)];
           
@@ -256,12 +258,21 @@ export function FlappyCommit() {
         l.boss.attackTimer--;
         if (l.boss.attackTimer <= 0) {
            l.boss.attackTimer = 40 + Math.random() * 40;
-           l.projectiles.push({
-             x: l.boss.x - 20, y: l.boss.y,
-             vx: - (currentSpeed + 2 + Math.random()*2), 
-             vy: (l.bird.y - l.boss.y) * 0.02,
-             type: "bug"
-           });
+           if (Math.random() < 0.25) {
+             l.projectiles.push({
+               x: l.boss.x - 20, y: l.boss.y,
+               vx: - (currentSpeed + 5), 
+               vy: 0,
+               type: "crash"
+             });
+           } else {
+             l.projectiles.push({
+               x: l.boss.x - 20, y: l.boss.y,
+               vx: - (currentSpeed + 2 + Math.random()*2), 
+               vy: (l.bird.y - l.boss.y) * 0.02,
+               type: "bug"
+             });
+           }
         }
         
         // Spawn Weapon STAMP powerups
@@ -303,6 +314,19 @@ export function FlappyCommit() {
               vx: 8, vy: 0, type: "stamp"
             });
             l.score++; // Passive point for collecting shot
+            if (gameState === "playing") setScoreDisplay(l.score);
+          } else if (pu.effect === "heal") {
+            l.lives = Math.min(5, l.lives + 1);
+            l.score += 2;
+            if (gameState === "playing") setScoreDisplay(l.score);
+          } else if (pu.effect === "refactor") {
+            l.pipes.forEach(p => p.destroyed = true);
+            l.projectiles.forEach(pr => { 
+                if (pr.type === "bug" || pr.type === "crash") {
+                    pr.type = "stamp"; pr.vx = 8; pr.vy = 0; 
+                }
+            });
+            l.score += 5;
             if (gameState === "playing") setScoreDisplay(l.score);
           } else {
             l.activeEffect = pu.effect;
@@ -380,6 +404,14 @@ export function FlappyCommit() {
           ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
           ctx.fillStyle = "rgba(255, 59, 48, 0.9)";
           ctx.fill();
+        } else if (p.type === "crash") {
+          ctx.beginPath();
+          ctx.rect(p.x - 12, p.y - 12, 24, 24);
+          ctx.fillStyle = "rgba(155, 89, 182, 0.9)";
+          ctx.fill();
+          ctx.fillStyle = "white";
+          ctx.font = "bold 8px monospace";
+          ctx.fillText("502", p.x, p.y + 3);
         } else if (p.type === "stamp") {
           ctx.beginPath();
           ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
@@ -391,10 +423,11 @@ export function FlappyCommit() {
         }
 
         // Combat Collision 
-        if (p.type === "bug") {
+        if (p.type === "bug" || p.type === "crash") {
+          const hitRadius = p.type === "crash" ? 22 : 18;
           const dist = Math.hypot((l.bird.x + l.bird.width/2) - p.x, (l.bird.y + l.bird.height/2) - p.y);
-          if (dist < 18) {
-             if (l.activeEffect === "sudo" || l.activeEffect === "cloud") {
+          if (dist < hitRadius) {
+             if (p.type === "bug" && (l.activeEffect === "sudo" || l.activeEffect === "cloud")) {
                p.type = "stamp"; // deflect back!
                p.vx = 8;
              } else if (gameState !== "idle") {
