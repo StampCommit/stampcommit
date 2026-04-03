@@ -11,28 +11,21 @@ export function FlappyCommit() {
 
   // Use refs for the game physics to avoid React re-renders killing performance
   const logic = useRef({
-    bird: { x: 50, y: 150, width: 34, height: 34, velocity: 0, gravity: 0.4, jump: -6.5 },
+    bird: { x: 50, y: 150, width: 30, height: 30, velocity: 0, gravity: 0.35, jump: -6 },
     pipes: [] as { x: number; topH: number; bottomY: number; passed: boolean }[],
     score: 0,
     frames: 0,
-    speed: 3,
-    gap: 130,
+    speed: 2.2,
+    gap: 160,
     imgReady: false,
     width: 420,
     height: 380
   });
 
-  const imgRef = useRef<HTMLImageElement | null>(null);
-
-  // Preload image
+  // Removed external static image loading; relies purely on native canvas drawing now
   useEffect(() => {
-    const img = new window.Image();
-    img.src = "/logo.png";
-    img.onload = () => {
-      logic.current.imgReady = true;
-      if (gameState === "idle") drawIdle();
-    };
-    imgRef.current = img;
+    logic.current.imgReady = true;
+    if (gameState === "idle") drawIdle();
   }, []);
 
   // Responsive canvas resize logic
@@ -70,11 +63,27 @@ export function FlappyCommit() {
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw Bird floating
+    // Draw Bird floating natively 
     const floatY = l.height / 2 + Math.sin(Date.now() / 300) * 10;
-    if (l.imgReady && imgRef.current) {
-      ctx.drawImage(imgRef.current, l.bird.x, floatY, l.bird.width, l.bird.height);
-    }
+    ctx.save();
+    ctx.translate(l.bird.x + l.bird.width / 2, floatY + l.bird.height / 2);
+    drawGlowingOrb(ctx, l.bird.width / 2);
+    ctx.restore();
+  };
+
+  const drawGlowingOrb = (ctx: CanvasRenderingContext2D, radius: number) => {
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0, 153, 255, 0.9)";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(-radius * 0.3, -radius * 0.3, radius * 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.fill();
   };
 
   useEffect(() => {
@@ -183,17 +192,12 @@ export function FlappyCommit() {
         }
       }
 
-      // Draw Bird
-      if (l.imgReady && imgRef.current) {
-        ctx.save();
-        ctx.translate(l.bird.x + l.bird.width / 2, l.bird.y + l.bird.height / 2);
-        ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (l.bird.velocity * 0.1))));
-        ctx.drawImage(imgRef.current, -l.bird.width / 2, -l.bird.height / 2, l.bird.width, l.bird.height);
-        ctx.restore();
-      } else {
-        ctx.fillStyle = "blue";
-        ctx.fillRect(l.bird.x, l.bird.y, l.bird.width, l.bird.height);
-      }
+      // Draw natively generated Bird Model
+      ctx.save();
+      ctx.translate(l.bird.x + l.bird.width / 2, l.bird.y + l.bird.height / 2);
+      ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (l.bird.velocity * 0.1))));
+      drawGlowingOrb(ctx, l.bird.width / 2);
+      ctx.restore();
 
       // Draw Score instantly on canvas header
       if (gameState === "playing") {
@@ -244,20 +248,18 @@ export function FlappyCommit() {
       
       {gameState === "idle" && (
         <div className={styles.overlay}>
-          <h3 className={styles.title}>Flappy Commit</h3>
-          <p className={styles.instructions}>Tap or Press Space to Jump over the Firewalls</p>
+          <p className={styles.instructions}>Tap to fly</p>
           <button className="btn btn-primary btn-sm" onClick={handleInteraction}>
-            Play Now
+            Play Context
           </button>
         </div>
       )}
 
       {gameState === "gameover" && (
         <div className={styles.overlay}>
-          <h3 className={styles.title}>System Crash</h3>
-          <p className={styles.instructions}>Final Score: {scoreDisplay}</p>
-          <button className="btn btn-outline btn-sm" onClick={handleInteraction}>
-            Reboot System
+          <p className={styles.instructions}>Score: {scoreDisplay}</p>
+          <button className="btn btn-primary btn-sm" onClick={handleInteraction}>
+            Restart
           </button>
         </div>
       )}
