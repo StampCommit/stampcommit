@@ -14,7 +14,9 @@ export function FlappyCommit() {
   // Use refs for the game physics to avoid React re-renders killing performance
   const logic = useRef({
     bird: { x: 50, y: 150, width: 34, height: 34, velocity: 0, gravity: 0.4, jump: -6.5 },
-    pipes: [] as { x: number; topH: number; bottomY: number; passed: boolean }[],
+    pipes: [] as { x: number; topH: number; bottomY: number; passed: boolean; destroyed?: boolean }[],
+    powerups: [] as { x: number; y: number; text: string; collected: boolean }[],
+    sudoTimer: 0,
     score: 0,
     frames: 0,
     speed: 3,
@@ -56,6 +58,8 @@ export function FlappyCommit() {
     logic.current.bird.y = logic.current.height / 2;
     logic.current.bird.velocity = 0;
     logic.current.pipes = [];
+    logic.current.powerups = [];
+    logic.current.sudoTimer = 0;
     logic.current.score = 0;
     logic.current.frames = 0;
     setScoreDisplay(0);
@@ -129,12 +133,15 @@ export function FlappyCommit() {
         }
       }
 
+      // Decrement sudo timer
+      if (l.sudoTimer > 0) l.sudoTimer--;
+
       // Physics
       l.bird.velocity += l.bird.gravity;
       l.bird.y += l.bird.velocity;
       l.frames++;
 
-      // Pipe generation
+      // Pipe & Powerup generation
       if (l.frames % 90 === 0) {
         const minPipeH = 50;
         const maxPipeH = l.height - l.gap - minPipeH;
@@ -144,17 +151,58 @@ export function FlappyCommit() {
           x: l.width,
           topH: topHeight,
           bottomY: topHeight + l.gap,
-          passed: false
+          passed: false,
+          destroyed: false
         });
+
+        // 25% chance to spawn a tech stack "Root Access" pill
+        if (Math.random() < 0.25) {
+          const tech = ["GO", "RS", "TS", "KMP"][Math.floor(Math.random() * 4)];
+          l.powerups.push({
+            x: l.width + 60, // offset slightly from pipe
+            y: topHeight + (l.gap / 2),
+            text: tech,
+            collected: false
+          });
+        }
       }
 
       ctx.clearRect(0, 0, l.width, l.height);
+
+      // Draw Powerups and handle collection
+      for (let i = 0; i < l.powerups.length; i++) {
+        const pu = l.powerups[i];
+        if (pu.collected) continue;
+        pu.x -= l.speed;
+
+        // Draw pill
+        ctx.fillStyle = "rgba(255, 189, 46, 0.9)"; // Terminal yellow
+        ctx.beginPath();
+        ctx.roundRect(pu.x - 20, pu.y - 12, 40, 24, 12);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.stroke();
+
+        ctx.fillStyle = "#000";
+        ctx.font = "bold 12px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(pu.text, pu.x, pu.y);
+
+        // Collision Check for Powerup
+        const dist = Math.hypot((l.bird.x + l.bird.width / 2) - pu.x, (l.bird.y + l.bird.height / 2) - pu.y);
+        if (dist < 30) {
+          pu.collected = true;
+          l.sudoTimer = 400; // ~6 seconds of SUDO Mode
+        }
+      }
 
       // Draw Pipes
       ctx.fillStyle = "rgba(0, 153, 255, 0.8)";
       for (let i = 0; i < l.pipes.length; i++) {
         const p = l.pipes[i];
         p.x -= l.speed;
+        if (p.destroyed) continue;
         
         // Top pipe
         ctx.fillRect(p.x, 0, 50, p.topH);
@@ -178,7 +226,18 @@ export function FlappyCommit() {
           bx + bw - 5 > p.x && bx + 5 < p.x + 50 &&
           (by + 5 < p.topH || by + bh - 5 > p.bottomY)
         ) {
-          if (gameState === "idle") {
+          if (l.sudoTimer > 0) {
+            // FIREWALL DESTROYED! Sudo mode smashes it.
+            p.destroyed = true;
+            l.score += 2; // Bonus points for destroying firewalls
+            if (gameState === "playing") setScoreDisplay(l.score);
+            // Draw explosion effect
+            ctx.fillStyle = "rgba(255, 95, 86, 0.8)";
+            ctx.beginPath();
+            ctx.arc(p.x + 25, l.bird.y, 40, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "rgba(0, 153, 255, 0.8)"; // revert
+          } else if (gameState === "idle") {
             // In attract mode, just ghost through if physics fail slightly
           } else {
             setGameState("gameover");
@@ -187,15 +246,16 @@ export function FlappyCommit() {
           }
         }
 
-        if (p.x + 50 < bx && !p.passed) {
+        if (p.x + 50 < bx && !p.passed && !p.destroyed) {
           l.score++;
           p.passed = true;
           if (gameState === "playing") setScoreDisplay(l.score);
         }
       }
 
-      // Cleanup offscreen pipes
+      // Cleanup offscreen objects
       l.pipes = l.pipes.filter(p => p.x > -50);
+      l.powerups = l.powerups.filter(pu => pu.x > -50 && !pu.collected);
 
       // Hit Floor or Ceiling
       if (l.bird.y + l.bird.height > l.height || l.bird.y < 0) {
@@ -212,6 +272,18 @@ export function FlappyCommit() {
       const radius = l.bird.width / 2;
       ctx.save();
       ctx.translate(l.bird.x + radius, l.bird.y + radius);
+      
+      // Sudo Mode Aura effect!
+      if (l.sudoTimer > 0) {
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 10 + Math.sin(l.frames * 0.2) * 5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(16, 185, 129, 0.4)"; // Neon green
+        ctx.fill();
+        ctx.strokeStyle = "rgba(16, 185, 129, 0.8)";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
       ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (l.bird.velocity * 0.1))));
       
       if (l.imgReady && imgRef.current) {
@@ -224,12 +296,18 @@ export function FlappyCommit() {
       }
       ctx.restore();
 
-      // Draw Score instantly on canvas header
+      // Draw Score and Status instantly on canvas header
       if (gameState === "playing") {
         ctx.fillStyle = "white";
         ctx.font = "bold 24px monospace";
         ctx.textAlign = "center";
         ctx.fillText(l.score.toString(), l.width / 2, 40);
+
+        if (l.sudoTimer > 0) {
+          ctx.fillStyle = "#10B981"; // Green
+          ctx.font = "bold 16px monospace";
+          ctx.fillText("`SUDO` MODE ACTIVE", l.width / 2, 70);
+        }
       }
 
       animationId = requestAnimationFrame(gameLoop);
