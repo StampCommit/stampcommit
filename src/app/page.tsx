@@ -4,7 +4,6 @@ import { ProjectCard } from "@/components/ProjectCard";
 import { SectionHeading } from "@/components/SectionHeading";
 import { TechBadge } from "@/components/TechBadge";
 import { TeamCard } from "@/components/TeamCard";
-import { IoTRadarGame } from "@/components/IoTRadarGame";
 import { FEATURES, PROJECTS, TECH_STACK, TEAM } from "@/data/projects";
 import styles from "./page.module.css";
 
@@ -83,20 +82,6 @@ export default function Home() {
               <TeamCard key={member.name} {...member} index={i} />
             ))}
           </div>
-        </div>
-      </section>
-
-      <div className="glow-line" />
-
-      {/* Interactive Experience */}
-      <section className="section" id="interactive">
-        <div className="container">
-          <SectionHeading
-            label="Interactive Experience"
-            title="IoT Pairing Simulator"
-            subtitle="Take a break and test your reflexes. Can you successfully pair all devices to the central IoT hub before they disconnect?"
-          />
-          <IoTRadarGame />
         </div>
       </section>
 
