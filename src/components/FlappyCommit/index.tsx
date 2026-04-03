@@ -78,15 +78,7 @@ export function FlappyCommit() {
   };
 
   useEffect(() => {
-    if (gameState !== "playing") {
-      let animId: number;
-      const animateIdle = () => {
-        if (gameState === "idle") drawIdle();
-        animId = requestAnimationFrame(animateIdle);
-      };
-      if (gameState === "idle") animateIdle();
-      return () => cancelAnimationFrame(animId);
-    }
+    if (gameState === "gameover") return; // Freeze screen
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -97,6 +89,21 @@ export function FlappyCommit() {
     let animationId: number;
 
     const gameLoop = () => {
+      // Autopilot (Attract Mode)
+      if (gameState === "idle") {
+        const nextPipe = l.pipes.find(p => p.x + 50 > l.bird.x);
+        if (nextPipe) {
+          const targetY = (nextPipe.topH + nextPipe.bottomY) / 2;
+          if (l.bird.y > targetY + 15 && l.bird.velocity >= 0) {
+            l.bird.velocity = l.bird.jump;
+          }
+        } else {
+          if (l.bird.y > l.height / 2 + 20 && l.bird.velocity >= 0) {
+            l.bird.velocity = l.bird.jump;
+          }
+        }
+      }
+
       // Physics
       l.bird.velocity += l.bird.gravity;
       l.bird.y += l.bird.velocity;
@@ -104,11 +111,8 @@ export function FlappyCommit() {
 
       // Pipe generation
       if (l.frames % 90 === 0) {
-        // Safe spawn zone to ensure gap is always fully on screen
         const minPipeH = 50;
         const maxPipeH = l.height - l.gap - minPipeH;
-        
-        // ensure valid height
         const topHeight = Math.max(minPipeH, Math.random() * maxPipeH);
         
         l.pipes.push({
@@ -131,14 +135,13 @@ export function FlappyCommit() {
         ctx.fillRect(p.x, 0, 50, p.topH);
         
         // Bottom pipe
-        // To make it look like tech stacks, add a stroke line 
         ctx.fillRect(p.x, p.bottomY, 50, l.height - p.bottomY);
         
-        // Pipe accents (make them look somewhat like server racks)
+        // Pipe accents
         ctx.fillStyle = "rgba(0, 255, 255, 1)";
         ctx.fillRect(p.x, p.topH - 10, 50, 10);
         ctx.fillRect(p.x, p.bottomY, 50, 10);
-        ctx.fillStyle = "rgba(0, 153, 255, 0.8)"; // revert fill style
+        ctx.fillStyle = "rgba(0, 153, 255, 0.8)";
 
         // Collision Check
         const bx = l.bird.x;
@@ -146,21 +149,23 @@ export function FlappyCommit() {
         const bw = l.bird.width;
         const bh = l.bird.height;
 
-        // Hit pipes
         if (
           bx + bw - 5 > p.x && bx + 5 < p.x + 50 &&
           (by + 5 < p.topH || by + bh - 5 > p.bottomY)
         ) {
-          setGameState("gameover");
-          setScoreDisplay(l.score);
-          return; // Stop rendering
+          if (gameState === "idle") {
+            // In attract mode, just ghost through if physics fail slightly
+          } else {
+            setGameState("gameover");
+            setScoreDisplay(l.score);
+            return; // Stop rendering
+          }
         }
 
-        // Pass pipe
         if (p.x + 50 < bx && !p.passed) {
           l.score++;
           p.passed = true;
-          setScoreDisplay(l.score); // safe to update real score occasionally
+          if (gameState === "playing") setScoreDisplay(l.score);
         }
       }
 
@@ -169,30 +174,34 @@ export function FlappyCommit() {
 
       // Hit Floor or Ceiling
       if (l.bird.y + l.bird.height > l.height || l.bird.y < 0) {
-        setGameState("gameover");
-        setScoreDisplay(l.score);
-        return;
+        if (gameState === "idle") {
+          l.bird.velocity = l.bird.jump; // Bounce up
+        } else {
+          setGameState("gameover");
+          setScoreDisplay(l.score);
+          return;
+        }
       }
 
       // Draw Bird
       if (l.imgReady && imgRef.current) {
         ctx.save();
         ctx.translate(l.bird.x + l.bird.width / 2, l.bird.y + l.bird.height / 2);
-        // Tilt bird slightly based on velocity
         ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (l.bird.velocity * 0.1))));
         ctx.drawImage(imgRef.current, -l.bird.width / 2, -l.bird.height / 2, l.bird.width, l.bird.height);
         ctx.restore();
       } else {
-        // Fallback
         ctx.fillStyle = "blue";
         ctx.fillRect(l.bird.x, l.bird.y, l.bird.width, l.bird.height);
       }
 
       // Draw Score instantly on canvas header
-      ctx.fillStyle = "white";
-      ctx.font = "bold 24px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText(l.score.toString(), l.width / 2, 40);
+      if (gameState === "playing") {
+        ctx.fillStyle = "white";
+        ctx.font = "bold 24px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(l.score.toString(), l.width / 2, 40);
+      }
 
       animationId = requestAnimationFrame(gameLoop);
     };
