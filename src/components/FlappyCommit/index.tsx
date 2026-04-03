@@ -14,7 +14,10 @@ export function FlappyCommit() {
   const logic = useRef({
     bird: { x: 50, y: 150, width: 34, height: 34, velocity: 0, gravity: 0.4, jump: -6.5 },
     pipes: [] as { x: number; topH: number; bottomY: number; passed: boolean; destroyed?: boolean }[],
-    powerups: [] as { x: number; y: number; text: string; effect: "sudo" | "shrink" | "slow" | "typesafe" | "leak" | "cloud"; color: string; collected: boolean }[],
+    powerups: [] as { x: number; y: number; text: string; effect: "sudo" | "shrink" | "slow" | "typesafe" | "leak" | "cloud" | "shoot"; color: string; collected: boolean }[],
+    projectiles: [] as { x: number; y: number; vx: number; vy: number; type: "bug" | "stamp" }[],
+    boss: { active: false, hp: 0, maxHp: 10, x: 500, y: 150, attackTimer: 0 },
+    bossesDefeated: 0,
     activeEffect: "none" as "none" | "sudo" | "shrink" | "slow" | "typesafe" | "leak" | "cloud",
     effectTimer: 0,
     score: 0,
@@ -66,12 +69,16 @@ export function FlappyCommit() {
     l.pipes = [{ x: 280, topH, bottomY: topH + l.gap, passed: false, destroyed: false }];
     
     l.powerups = [];
+    l.projectiles = [];
+    l.boss = { active: false, hp: 0, maxHp: 10, x: l.width + 100, y: l.height / 2, attackTimer: 0 };
+    l.bossesDefeated = 0;
+    
     l.activeEffect = "none";
     l.effectTimer = 0;
     l.bird.width = 34;
     l.bird.height = 34;
     l.score = 0;
-    l.frames = 46; // Offset frame clock so the *next* pipe (at 90) perfectly follows 280px distance
+    l.frames = 46;
     setScoreDisplay(0);
   };
 
@@ -172,8 +179,19 @@ export function FlappyCommit() {
       if (l.activeEffect === "slow") currentSpeed = l.speed * 0.55;
       else if (l.activeEffect === "leak") currentSpeed = l.speed * 1.5;
 
+      // Boss Phase Trigger
+      const shouldSpawnBoss = l.score >= 15 * (l.bossesDefeated + 1);
+      if (shouldSpawnBoss && !l.boss.active && l.pipes.length === 0) {
+        l.boss.active = true;
+        l.boss.hp = 10 + (l.bossesDefeated * 5);
+        l.boss.maxHp = l.boss.hp;
+        l.boss.x = l.width + 100;
+        l.boss.y = l.height / 2;
+        l.boss.attackTimer = 50;
+      }
+
       // Pipe & Powerup generation
-      if (l.frames % 90 === 0) {
+      if (l.frames % 90 === 0 && !shouldSpawnBoss && !l.boss.active) {
         const minPipeH = 50;
         const maxPipeH = l.height - l.gap - minPipeH;
         const topHeight = Math.max(minPipeH, Math.random() * maxPipeH);
@@ -210,6 +228,32 @@ export function FlappyCommit() {
       }
 
       ctx.clearRect(0, 0, l.width, l.height);
+      
+      // Boss AI
+      if (l.boss.active) {
+        // Track player seamlessly
+        l.boss.y += (l.bird.y - l.boss.y) * 0.05;
+        if (l.boss.x > l.width - 60) l.boss.x -= 1;
+        
+        l.boss.attackTimer--;
+        if (l.boss.attackTimer <= 0) {
+           l.boss.attackTimer = 40 + Math.random() * 40;
+           l.projectiles.push({
+             x: l.boss.x - 20, y: l.boss.y,
+             vx: - (currentSpeed + 2 + Math.random()*2), 
+             vy: (l.bird.y - l.boss.y) * 0.02,
+             type: "bug"
+           });
+        }
+        
+        // Spawn Weapon STAMP powerups
+        if (Math.random() < 0.02) {
+            l.powerups.push({
+               x: l.width + 20, y: Math.max(50, Math.min(l.height - 50, l.bird.y + (Math.random() * 100 - 50))),
+               text: "STAMP", effect: "shoot", color: "rgba(255, 215, 0, 0.9)", collected: false
+            });
+        }
+      }
 
       // Draw Powerups and handle collection
       for (let i = 0; i < l.powerups.length; i++) {
@@ -235,12 +279,20 @@ export function FlappyCommit() {
         const dist = Math.hypot((l.bird.x + l.bird.width / 2) - pu.x, (l.bird.y + l.bird.height / 2) - pu.y);
         if (dist < 30) {
           pu.collected = true;
-          l.activeEffect = pu.effect;
-          l.effectTimer = pu.effect === "sudo" ? 400 : 500; 
-          
-          if (pu.effect === "shrink") {
-            l.bird.width = 18;
-            l.bird.height = 18;
+          if (pu.effect === "shoot") {
+            l.projectiles.push({
+              x: l.bird.x + l.bird.width, y: l.bird.y + l.bird.height / 2,
+              vx: 8, vy: 0, type: "stamp"
+            });
+            l.score++; // Passive point for collecting shot
+            if (gameState === "playing") setScoreDisplay(l.score);
+          } else {
+            l.activeEffect = pu.effect;
+            l.effectTimer = pu.effect === "sudo" ? 400 : 500; 
+            if (pu.effect === "shrink") {
+              l.bird.width = 18;
+              l.bird.height = 18;
+            }
           }
         }
       }
@@ -299,6 +351,85 @@ export function FlappyCommit() {
           p.passed = true;
           if (gameState === "playing") setScoreDisplay(l.score);
         }
+      }
+
+      // Projectiles System
+      for (let i = 0; i < l.projectiles.length; i++) {
+        const p = l.projectiles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        
+        if (p.type === "bug") {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255, 59, 48, 0.9)";
+          ctx.fill();
+        } else if (p.type === "stamp") {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255, 215, 0, 1)";
+          ctx.fill();
+          ctx.fillStyle = "black";
+          ctx.font = "bold 10px monospace";
+          ctx.fillText("✓", p.x, p.y);
+        }
+
+        // Combat Collision 
+        if (p.type === "bug") {
+          const dist = Math.hypot((l.bird.x + l.bird.width/2) - p.x, (l.bird.y + l.bird.height/2) - p.y);
+          if (dist < 18) {
+             if (l.activeEffect === "sudo" || l.activeEffect === "cloud") {
+               p.type = "stamp"; // deflect back!
+               p.vx = 8;
+             } else if (gameState !== "idle") {
+               setGameState("gameover");
+               setScoreDisplay(l.score);
+               return;
+             }
+          }
+        } else if (p.type === "stamp" && l.boss.active) {
+          const bossDist = Math.hypot(l.boss.x - p.x, l.boss.y - p.y);
+          if (bossDist < 45) {
+             l.boss.hp--;
+             p.x = -100; // destroy projectile
+             if (l.boss.hp <= 0) {
+               l.boss.active = false;
+               l.bossesDefeated++;
+               l.score += 20; // Defeat bonus!
+               if (gameState === "playing") setScoreDisplay(l.score);
+               l.projectiles = []; 
+               break;
+             }
+          }
+        }
+      }
+      l.projectiles = l.projectiles.filter(p => p.x > -50 && p.x < l.width + 50);
+
+      // Boss Rendering
+      if (l.boss.active) {
+        ctx.save();
+        ctx.translate(l.boss.x, l.boss.y);
+        ctx.rotate(Math.sin(l.frames * 0.05) * 0.1);
+        
+        ctx.fillStyle = "rgba(255, 59, 48, 0.2)";
+        ctx.beginPath();
+        ctx.arc(0, 0, 50 + Math.sin(l.frames * 0.3) * 10, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = "rgba(255, 59, 48, 0.9)";
+        ctx.beginPath();
+        ctx.roundRect(-25, -25, 50, 50, 8);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = "white";
+        ctx.font = "bold 20px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("! ><", 0, 0); 
+        ctx.restore();
       }
 
       // Cleanup offscreen objects
@@ -384,12 +515,24 @@ export function FlappyCommit() {
         ctx.textAlign = "center";
         ctx.fillText(l.score.toString(), l.width / 2, 40);
 
+        if (l.boss.active) {
+          const hpW = 200;
+          ctx.fillStyle = "rgba(0,0,0,0.5)";
+          ctx.fillRect(l.width/2 - hpW/2, 60, hpW, 10);
+          ctx.fillStyle = "rgba(255, 59, 48, 0.9)";
+          ctx.fillRect(l.width/2 - hpW/2, 60, hpW * (l.boss.hp / l.boss.maxHp), 10);
+          ctx.fillStyle = "white";
+          ctx.font = "bold 12px monospace";
+          ctx.fillText("MERGE CONFLICT", l.width/2, 55);
+        }
+
         if (l.activeEffect !== "none") {
           const colors = { sudo: "#326CE5", shrink: "#DE6821", slow: "#00ADD8", typesafe: "#3178C6", leak: "#FF0000", cloud: "#FF9900" };
           const labels = { sudo: "`SUDO` MODE", shrink: "MICROSERVICE", slow: "BANDWIDTH LIMIT", typesafe: "TYPE SAFETY", leak: "MEMORY LEAK", cloud: "CLOUD DEPLOY" };
           ctx.fillStyle = colors[l.activeEffect];
           ctx.font = "bold 16px monospace";
-          ctx.fillText(labels[l.activeEffect] + " ACTIVE", l.width / 2, 70);
+          // Render lower if boss is active to avoid overlap
+          ctx.fillText(labels[l.activeEffect] + " ACTIVE", l.width / 2, l.boss.active ? 95 : 70);
         }
       }
 
