@@ -9,6 +9,7 @@ import styles from "./Navbar.module.css";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
+  { href: "/#team", label: "Our Team" },
   { href: "/projects", label: "Projects" },
 ];
 
@@ -57,6 +58,10 @@ export function Navbar() {
 
         <div className={styles.actions}>
           <ThemeToggle />
+
+          <Link href="/#contact" className={`btn btn-outline ${styles.ctaBtn}`}>
+            Contact Us
+          </Link>
 
           <Link href="/projects" className={`btn btn-primary ${styles.ctaBtn}`}>
             Explore Projects
