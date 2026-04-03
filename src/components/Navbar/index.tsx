@@ -17,12 +17,49 @@ export function Navbar() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeHash, setActiveHash] = useState("");
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+
+      if (pathname === "/") {
+        const sections = NAV_LINKS.map(l => l.href.split("#")[1]).filter(Boolean);
+        let currentHash = "";
+
+        for (const id of sections) {
+          const el = document.getElementById(id);
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            // If the section is within the viewing area (top in the upper third)
+            if (rect.top <= 300 && rect.bottom >= 300) {
+              currentHash = `#${id}`;
+              break;
+            }
+          }
+        }
+
+        // Reset if we are at the top of the page
+        if (window.scrollY < 100) {
+          currentHash = "";
+        }
+
+        setActiveHash(currentHash);
+      }
+    };
+
     window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll(); // Trigger instantly
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [pathname]);
+
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/" && activeHash === "";
+    if (href.startsWith("/#")) {
+      return pathname === "/" && activeHash === href.substring(1);
+    }
+    return pathname === href;
+  };
 
   return (
     <header className={`${styles.header} ${scrolled ? styles.scrolled : ""}`}>
@@ -46,7 +83,7 @@ export function Navbar() {
               <Link
                 href={link.href}
                 className={`${styles.link} ${
-                  pathname === link.href ? styles.active : ""
+                  isActive(link.href) ? styles.active : ""
                 }`}
                 onClick={() => setMobileOpen(false)}
               >
