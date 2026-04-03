@@ -14,8 +14,8 @@ export function FlappyCommit() {
   const logic = useRef({
     bird: { x: 50, y: 150, width: 34, height: 34, velocity: 0, gravity: 0.4, jump: -6.5 },
     pipes: [] as { x: number; topH: number; bottomY: number; passed: boolean; destroyed?: boolean }[],
-    powerups: [] as { x: number; y: number; text: string; effect: "sudo" | "shrink" | "slow"; color: string; collected: boolean }[],
-    activeEffect: "none" as "none" | "sudo" | "shrink" | "slow",
+    powerups: [] as { x: number; y: number; text: string; effect: "sudo" | "shrink" | "slow" | "typesafe" | "leak" | "cloud"; color: string; collected: boolean }[],
+    activeEffect: "none" as "none" | "sudo" | "shrink" | "slow" | "typesafe" | "leak" | "cloud",
     effectTimer: 0,
     score: 0,
     frames: 0,
@@ -153,12 +153,24 @@ export function FlappyCommit() {
         }
       }
 
+      // TypeSafe Mechanic: Magnetic Auto-Aim!
+      if (l.activeEffect === "typesafe") {
+        const nextPipes = l.pipes.filter(p => !p.passed && p.x < l.width + 50);
+        for (const p of nextPipes) {
+          const targetY = (p.topH + p.bottomY) / 2;
+          if (targetY < l.bird.y - 10) { p.topH += 1.5; p.bottomY += 1.5; }
+          else if (targetY > l.bird.y + 10) { p.topH -= 1.5; p.bottomY -= 1.5; }
+        }
+      }
+
       // Physics
       l.bird.velocity += l.bird.gravity;
       l.bird.y += l.bird.velocity;
       l.frames++;
       
-      const currentSpeed = l.activeEffect === "slow" ? l.speed * 0.55 : l.speed;
+      let currentSpeed = l.speed;
+      if (l.activeEffect === "slow") currentSpeed = l.speed * 0.55;
+      else if (l.activeEffect === "leak") currentSpeed = l.speed * 1.5;
 
       // Pipe & Powerup generation
       if (l.frames % 90 === 0) {
@@ -174,12 +186,15 @@ export function FlappyCommit() {
           destroyed: false
         });
 
-        // 30% chance to spawn a tech stack item
-        if (Math.random() < 0.3) {
+        // 40% chance to spawn a tech stack item
+        if (Math.random() < 0.4) {
           const techs = [
             { text: "K8S", effect: "sudo", color: "rgba(50, 108, 229, 0.9)" }, // Sudo: smash
             { text: "RS", effect: "shrink", color: "rgba(222, 104, 33, 0.9)" },  // Shrink: small hitbox
-            { text: "GO", effect: "slow", color: "rgba(0, 173, 216, 0.9)" }    // Slow: slow speed
+            { text: "GO", effect: "slow", color: "rgba(0, 173, 216, 0.9)" },    // Slow: slow speed
+            { text: "TS", effect: "typesafe", color: "rgba(49, 120, 198, 0.9)" }, // TypeSafe: magnet
+            { text: "C", effect: "leak", color: "rgba(168, 185, 204, 0.9)" }, // Leak: fast speed trap
+            { text: "AWS", effect: "cloud", color: "rgba(255, 153, 0, 0.9)" } // Cloud: floor bounce
           ] as const;
           const tech = techs[Math.floor(Math.random() * techs.length)];
           
@@ -292,8 +307,9 @@ export function FlappyCommit() {
 
       // Hit Floor or Ceiling
       if (l.bird.y + l.bird.height > l.height || l.bird.y < 0) {
-        if (gameState === "idle") {
-          l.bird.velocity = l.bird.jump; // Bounce up
+        if (gameState === "idle" || l.activeEffect === "cloud") {
+          l.bird.y = Math.max(0, Math.min(l.height - l.bird.height, l.bird.y));
+          l.bird.velocity = l.bird.jump * (l.bird.y < 50 ? -1 : 1); // Bounce
         } else {
           setGameState("gameover");
           setScoreDisplay(l.score);
@@ -328,6 +344,25 @@ export function FlappyCommit() {
         ctx.arc(0, 0, radius + 8, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(0, 173, 216, 0.3)"; // Cyan
         ctx.fill();
+      } else if (l.activeEffect === "typesafe") {
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 12, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(49, 120, 198, 0.6)"; 
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      } else if (l.activeEffect === "leak") {
+        ctx.beginPath();
+        ctx.arc(Math.random()*4-2, Math.random()*4-2, radius + 6, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(255, 0, 0, 0.8)"; 
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (l.activeEffect === "cloud") {
+        ctx.beginPath();
+        ctx.arc(0, radius + 4, 8, 0, Math.PI * 2);
+        ctx.arc(-8, radius + 2, 6, 0, Math.PI * 2);
+        ctx.arc(8, radius + 2, 6, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.6)"; 
+        ctx.fill();
       }
 
       ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (l.bird.velocity * 0.1))));
@@ -350,8 +385,8 @@ export function FlappyCommit() {
         ctx.fillText(l.score.toString(), l.width / 2, 40);
 
         if (l.activeEffect !== "none") {
-          const colors = { sudo: "#326CE5", shrink: "#DE6821", slow: "#00ADD8" };
-          const labels = { sudo: "`SUDO` MODE", shrink: "MICROSERVICE", slow: "BANDWIDTH LIMIT" };
+          const colors = { sudo: "#326CE5", shrink: "#DE6821", slow: "#00ADD8", typesafe: "#3178C6", leak: "#FF0000", cloud: "#FF9900" };
+          const labels = { sudo: "`SUDO` MODE", shrink: "MICROSERVICE", slow: "BANDWIDTH LIMIT", typesafe: "TYPE SAFETY", leak: "MEMORY LEAK", cloud: "CLOUD DEPLOY" };
           ctx.fillStyle = colors[l.activeEffect];
           ctx.font = "bold 16px monospace";
           ctx.fillText(labels[l.activeEffect] + " ACTIVE", l.width / 2, 70);
