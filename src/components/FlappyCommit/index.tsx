@@ -9,23 +9,30 @@ export function FlappyCommit() {
   const [gameState, setGameState] = useState<"idle" | "playing" | "gameover">("idle");
   const [scoreDisplay, setScoreDisplay] = useState(0);
 
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
   // Use refs for the game physics to avoid React re-renders killing performance
   const logic = useRef({
-    bird: { x: 50, y: 150, width: 30, height: 30, velocity: 0, gravity: 0.35, jump: -6 },
+    bird: { x: 50, y: 150, width: 34, height: 34, velocity: 0, gravity: 0.4, jump: -6.5 },
     pipes: [] as { x: number; topH: number; bottomY: number; passed: boolean }[],
     score: 0,
     frames: 0,
-    speed: 2.2,
+    speed: 3,
     gap: 160,
     imgReady: false,
     width: 420,
     height: 380
   });
 
-  // Removed external static image loading; relies purely on native canvas drawing now
+  // Load the logo for the canvas
   useEffect(() => {
-    logic.current.imgReady = true;
-    if (gameState === "idle") drawIdle();
+    const img = new window.Image();
+    img.src = "/logo.png";
+    img.onload = () => {
+      logic.current.imgReady = true;
+      if (gameState === "idle") drawIdle();
+    };
+    imgRef.current = img;
   }, []);
 
   // Responsive canvas resize logic
@@ -63,11 +70,20 @@ export function FlappyCommit() {
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw Bird floating natively 
+    // Draw Bird floating with logo masked in circle
     const floatY = l.height / 2 + Math.sin(Date.now() / 300) * 10;
+    const radius = l.bird.width / 2;
     ctx.save();
-    ctx.translate(l.bird.x + l.bird.width / 2, floatY + l.bird.height / 2);
-    drawGlowingOrb(ctx, l.bird.width / 2);
+    ctx.translate(l.bird.x + radius, floatY + radius);
+    
+    if (l.imgReady && imgRef.current) {
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(imgRef.current, -radius, -radius, l.bird.width, l.bird.height);
+    } else {
+      drawGlowingOrb(ctx, radius);
+    }
     ctx.restore();
   };
 
@@ -192,11 +208,20 @@ export function FlappyCommit() {
         }
       }
 
-      // Draw natively generated Bird Model
+      // Draw natively generated Bird Model or Masked Logo
+      const radius = l.bird.width / 2;
       ctx.save();
-      ctx.translate(l.bird.x + l.bird.width / 2, l.bird.y + l.bird.height / 2);
+      ctx.translate(l.bird.x + radius, l.bird.y + radius);
       ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (l.bird.velocity * 0.1))));
-      drawGlowingOrb(ctx, l.bird.width / 2);
+      
+      if (l.imgReady && imgRef.current) {
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(imgRef.current, -radius, -radius, l.bird.width, l.bird.height);
+      } else {
+        drawGlowingOrb(ctx, radius);
+      }
       ctx.restore();
 
       // Draw Score instantly on canvas header
@@ -248,9 +273,15 @@ export function FlappyCommit() {
       
       {gameState === "idle" && (
         <div className={styles.overlay}>
-          <p className={styles.instructions}>Tap to fly</p>
-          <button className="btn btn-primary btn-sm" onClick={handleInteraction}>
-            Play Context
+          <button 
+            className="btn btn-primary" 
+            style={{ padding: '16px', borderRadius: '50%' }} 
+            onClick={handleInteraction}
+            aria-label="Play"
+          >
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
           </button>
         </div>
       )}
@@ -258,8 +289,15 @@ export function FlappyCommit() {
       {gameState === "gameover" && (
         <div className={styles.overlay}>
           <p className={styles.instructions}>Score: {scoreDisplay}</p>
-          <button className="btn btn-primary btn-sm" onClick={handleInteraction}>
-            Restart
+          <button 
+            className="btn btn-primary" 
+            style={{ padding: '16px', borderRadius: '50%' }} 
+            onClick={handleInteraction}
+            aria-label="Restart"
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" />
+            </svg>
           </button>
         </div>
       )}
