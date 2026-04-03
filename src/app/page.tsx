@@ -3,7 +3,8 @@ import { HeroSection } from "@/components/HeroSection";
 import { ProjectCard } from "@/components/ProjectCard";
 import { SectionHeading } from "@/components/SectionHeading";
 import { TechBadge } from "@/components/TechBadge";
-import { FEATURES, PROJECTS, TECH_STACK } from "@/data/projects";
+import { TeamCard } from "@/components/TeamCard";
+import { FEATURES, PROJECTS, TECH_STACK, TEAM } from "@/data/projects";
 import styles from "./page.module.css";
 
 export default function Home() {
@@ -61,6 +62,24 @@ export default function Home() {
           <div className={styles.techGrid}>
             {TECH_STACK.map((tech, i) => (
               <TechBadge key={tech.name} {...tech} index={i} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="glow-line" />
+
+      {/* Team */}
+      <section className="section" id="team">
+        <div className="container">
+          <SectionHeading
+            label="Our People"
+            title="Meet the Team"
+            subtitle="The experts behind StampCommit building top-tier connected solutions."
+          />
+          <div className={styles.teamGrid}>
+            {TEAM.map((member, i) => (
+              <TeamCard key={member.name} {...member} index={i} />
             ))}
           </div>
         </div>

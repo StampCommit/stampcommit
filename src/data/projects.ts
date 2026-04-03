@@ -86,6 +86,14 @@ export const TECH_STACK: TechItem[] = [
     name: "AWS",
     logo: "https://cdn.simpleicons.org/amazonwebservices/FF9900",
   },
+  {
+    name: "Go",
+    logo: "https://cdn.simpleicons.org/go/00ADD8",
+  },
+  {
+    name: "Rust",
+    logo: "https://cdn.simpleicons.org/rust/DEA584",
+  },
 ];
 
 export const FEATURES = [
@@ -103,14 +111,50 @@ export const FEATURES = [
   },
   {
     icon: "cpu",
-    title: "Embedded Systems",
+    title: "Embedded & IoT Cloud",
     description:
-      "Firmware development and embedded software for microcontrollers and SoCs. From bare-metal to RTOS.",
+      "End-to-end solutions from bare-metal firmware to complete IoT architectures, including device management, data pipelines, and OTA updates.",
   },
   {
-    icon: "cloud",
-    title: "Cloud & IoT",
+    icon: "sparkles",
+    title: "AI Agents & Automation",
     description:
-      "End-to-end IoT architectures — device management, data pipelines, real-time monitoring, and OTA updates.",
+      "Designing intelligent AI agents with built-in evaluation and feedback mechanisms to ensure high-quality, secure outputs while powering massive productivity.",
+  },
+];
+
+export interface TeamMember {
+  name: string;
+  role: string;
+  linkedin: string;
+  github: string;
+  nickname?: string;
+  image?: string;
+}
+
+export const TEAM: TeamMember[] = [
+  {
+    name: "An Sy Tung",
+    nickname: "Noah",
+    role: "AI Workflow and Automation Expert | Full Stack Expert",
+    linkedin: "https://www.linkedin.com/in/sytungan/",
+    github: "https://github.com/sytungan",
+    image: "https://github.com/sytungan.png",
+  },
+  {
+    name: "Tri Dang Huynh Minh",
+    nickname: "Tri",
+    role: "Mobile Development Expert | KMP & Flutter Expert | Architecting Secure SDKs & BLE Solutions",
+    linkedin: "https://www.linkedin.com/in/tridhm/",
+    github: "https://github.com/minhtri1401",
+    image: "https://github.com/minhtri1401.png",
+  },
+  {
+    name: "Khanh Nguyen Dinh",
+    nickname: "Koro",
+    role: "Mobile Architect Expert | RFID & POS Payment Solutions",
+    linkedin: "https://www.linkedin.com/in/dinhkhanh412/",
+    github: "https://github.com/dinhkhanh412",
+    image: "https://github.com/dinhkhanh412.png",
   },
 ];

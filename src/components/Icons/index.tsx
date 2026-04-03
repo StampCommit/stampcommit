@@ -89,6 +89,14 @@ export function ZapIcon({ size = 24, className }: IconProps): ReactNode {
   );
 }
 
+export function SparklesIcon({ size = 24, className }: IconProps): ReactNode {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // Map icon keys to components
 const ICON_MAP: Record<string, (props: IconProps) => ReactNode> = {
   bluetooth: BluetoothIcon,
@@ -98,6 +106,7 @@ const ICON_MAP: Record<string, (props: IconProps) => ReactNode> = {
   printer: PrinterIcon,
   radio: RadioIcon,
   zap: ZapIcon,
+  sparkles: SparklesIcon,
 };
 
 export function Icon({ name, ...props }: IconProps & { name: string }): ReactNode {

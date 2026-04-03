@@ -16,6 +16,12 @@
   gap: var(--space-md);
 }
 
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
 .ctaSection {
   text-align: center;
 }
@@ -29,6 +35,15 @@
 @media (max-width: 900px) {
   .featureGrid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .teamGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .teamGrid {
+    grid-template-columns: 1fr;
   }
 }
 
