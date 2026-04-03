@@ -11,12 +11,12 @@ export function FlappyCommit() {
 
   const imgRef = useRef<HTMLImageElement | null>(null);
 
-  // Use refs for the game physics to avoid React re-renders killing performance
   const logic = useRef({
     bird: { x: 50, y: 150, width: 34, height: 34, velocity: 0, gravity: 0.4, jump: -6.5 },
     pipes: [] as { x: number; topH: number; bottomY: number; passed: boolean; destroyed?: boolean }[],
-    powerups: [] as { x: number; y: number; text: string; collected: boolean }[],
-    sudoTimer: 0,
+    powerups: [] as { x: number; y: number; text: string; effect: "sudo" | "shrink" | "slow"; color: string; collected: boolean }[],
+    activeEffect: "none" as "none" | "sudo" | "shrink" | "slow",
+    effectTimer: 0,
     score: 0,
     frames: 0,
     speed: 3,
@@ -55,13 +55,23 @@ export function FlappyCommit() {
   }, [gameState]);
 
   const resetGame = () => {
-    logic.current.bird.y = logic.current.height / 2;
-    logic.current.bird.velocity = 0;
-    logic.current.pipes = [];
-    logic.current.powerups = [];
-    logic.current.sudoTimer = 0;
-    logic.current.score = 0;
-    logic.current.frames = 0;
+    const l = logic.current;
+    l.bird.y = l.height / 2;
+    l.bird.velocity = 0;
+    
+    // Spawn first pipe near the bird to skip waiting
+    const minH = 50;
+    const maxH = l.height - l.gap - minH;
+    const topH = Math.max(minH, Math.random() * maxH);
+    l.pipes = [{ x: 280, topH, bottomY: topH + l.gap, passed: false, destroyed: false }];
+    
+    l.powerups = [];
+    l.activeEffect = "none";
+    l.effectTimer = 0;
+    l.bird.width = 34;
+    l.bird.height = 34;
+    l.score = 0;
+    l.frames = 46; // Offset frame clock so the *next* pipe (at 90) perfectly follows 280px distance
     setScoreDisplay(0);
   };
 
@@ -133,13 +143,22 @@ export function FlappyCommit() {
         }
       }
 
-      // Decrement sudo timer
-      if (l.sudoTimer > 0) l.sudoTimer--;
+      // Decrement effect timer
+      if (l.effectTimer > 0) {
+        l.effectTimer--;
+        if (l.effectTimer === 0) {
+          l.activeEffect = "none";
+          l.bird.width = 34; // Restoring size if shrunk
+          l.bird.height = 34;
+        }
+      }
 
       // Physics
       l.bird.velocity += l.bird.gravity;
       l.bird.y += l.bird.velocity;
       l.frames++;
+      
+      const currentSpeed = l.activeEffect === "slow" ? l.speed * 0.55 : l.speed;
 
       // Pipe & Powerup generation
       if (l.frames % 90 === 0) {
@@ -155,13 +174,21 @@ export function FlappyCommit() {
           destroyed: false
         });
 
-        // 25% chance to spawn a tech stack "Root Access" pill
-        if (Math.random() < 0.25) {
-          const tech = ["GO", "RS", "TS", "KMP"][Math.floor(Math.random() * 4)];
+        // 30% chance to spawn a tech stack item
+        if (Math.random() < 0.3) {
+          const techs = [
+            { text: "K8S", effect: "sudo", color: "rgba(50, 108, 229, 0.9)" }, // Sudo: smash
+            { text: "RS", effect: "shrink", color: "rgba(222, 104, 33, 0.9)" },  // Shrink: small hitbox
+            { text: "GO", effect: "slow", color: "rgba(0, 173, 216, 0.9)" }    // Slow: slow speed
+          ] as const;
+          const tech = techs[Math.floor(Math.random() * techs.length)];
+          
           l.powerups.push({
             x: l.width + 60, // offset slightly from pipe
             y: topHeight + (l.gap / 2),
-            text: tech,
+            text: tech.text,
+            effect: tech.effect,
+            color: tech.color,
             collected: false
           });
         }
@@ -173,17 +200,17 @@ export function FlappyCommit() {
       for (let i = 0; i < l.powerups.length; i++) {
         const pu = l.powerups[i];
         if (pu.collected) continue;
-        pu.x -= l.speed;
+        pu.x -= currentSpeed;
 
         // Draw pill
-        ctx.fillStyle = "rgba(255, 189, 46, 0.9)"; // Terminal yellow
+        ctx.fillStyle = pu.color;
         ctx.beginPath();
         ctx.roundRect(pu.x - 20, pu.y - 12, 40, 24, 12);
         ctx.fill();
         ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
         ctx.stroke();
 
-        ctx.fillStyle = "#000";
+        ctx.fillStyle = "#FFF";
         ctx.font = "bold 12px monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -193,7 +220,13 @@ export function FlappyCommit() {
         const dist = Math.hypot((l.bird.x + l.bird.width / 2) - pu.x, (l.bird.y + l.bird.height / 2) - pu.y);
         if (dist < 30) {
           pu.collected = true;
-          l.sudoTimer = 400; // ~6 seconds of SUDO Mode
+          l.activeEffect = pu.effect;
+          l.effectTimer = pu.effect === "sudo" ? 400 : 500; 
+          
+          if (pu.effect === "shrink") {
+            l.bird.width = 18;
+            l.bird.height = 18;
+          }
         }
       }
 
@@ -201,7 +234,7 @@ export function FlappyCommit() {
       ctx.fillStyle = "rgba(0, 153, 255, 0.8)";
       for (let i = 0; i < l.pipes.length; i++) {
         const p = l.pipes[i];
-        p.x -= l.speed;
+        p.x -= currentSpeed;
         if (p.destroyed) continue;
         
         // Top pipe
@@ -226,7 +259,7 @@ export function FlappyCommit() {
           bx + bw - 5 > p.x && bx + 5 < p.x + 50 &&
           (by + 5 < p.topH || by + bh - 5 > p.bottomY)
         ) {
-          if (l.sudoTimer > 0) {
+          if (l.activeEffect === "sudo") {
             // FIREWALL DESTROYED! Sudo mode smashes it.
             p.destroyed = true;
             l.score += 2; // Bonus points for destroying firewalls
@@ -273,15 +306,28 @@ export function FlappyCommit() {
       ctx.save();
       ctx.translate(l.bird.x + radius, l.bird.y + radius);
       
-      // Sudo Mode Aura effect!
-      if (l.sudoTimer > 0) {
+      // Dynamic Aura effects!
+      if (l.activeEffect === "sudo") {
         ctx.beginPath();
         ctx.arc(0, 0, radius + 10 + Math.sin(l.frames * 0.2) * 5, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(16, 185, 129, 0.4)"; // Neon green
+        ctx.fillStyle = "rgba(50, 108, 229, 0.4)"; // Neon Blue
         ctx.fill();
-        ctx.strokeStyle = "rgba(16, 185, 129, 0.8)";
+        ctx.strokeStyle = "rgba(50, 108, 229, 0.8)";
         ctx.lineWidth = 3;
         ctx.stroke();
+      } else if (l.activeEffect === "shrink") {
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 6, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(222, 104, 33, 0.8)"; // Orange
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (l.activeEffect === "slow") {
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 8, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(0, 173, 216, 0.3)"; // Cyan
+        ctx.fill();
       }
 
       ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (l.bird.velocity * 0.1))));
@@ -303,10 +349,12 @@ export function FlappyCommit() {
         ctx.textAlign = "center";
         ctx.fillText(l.score.toString(), l.width / 2, 40);
 
-        if (l.sudoTimer > 0) {
-          ctx.fillStyle = "#10B981"; // Green
+        if (l.activeEffect !== "none") {
+          const colors = { sudo: "#326CE5", shrink: "#DE6821", slow: "#00ADD8" };
+          const labels = { sudo: "`SUDO` MODE", shrink: "MICROSERVICE", slow: "BANDWIDTH LIMIT" };
+          ctx.fillStyle = colors[l.activeEffect];
           ctx.font = "bold 16px monospace";
-          ctx.fillText("`SUDO` MODE ACTIVE", l.width / 2, 70);
+          ctx.fillText(labels[l.activeEffect] + " ACTIVE", l.width / 2, 70);
         }
       }
 
